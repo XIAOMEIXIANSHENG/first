@@ -1,0 +1,270 @@
+import numpy as np
+from PIL import Image
+import cv2
+from scipy import misc
+
+data = np.genfromtxt('PPI.txt',delimiter=',')#读取数组
+data= np.where(data<-100, 0, data)#背景颜色  黑色0，白色255
+image = Image.fromarray(data)  # 将之前的矩阵转换为图片
+misc.imsave("原始图片.png", image)
+
+#内插双线性法
+def interpolate_bilinear(src, ri, rf, rc, ti, tf, tc):############
+    if rf == rc & tc == tf:
+        out = src[rc][tc]
+    elif rf == rc:
+        out = (ti - tf) * src[rf][tc] + (tc - ti) * src[rf][tf]
+    elif tf == tc:
+        out = (ri - rf) * src[rc][tf] + (rc - ri) * src[rf][tf]
+    else:
+        inter_r1 = (ti - tf) * src[rf][tc] + (tc - ti) * src[rf][tf]
+        inter_r2 = (ti - tf) * src[rc][tc] + (tc - ti) * src[rc][tf]
+        out = (ri - rf) * inter_r2 + (rc - ri) * inter_r1
+    return out
+#极坐标转换
+def polar_transform(src, d):
+    # 初始换目标图像矩阵
+    dst = np.zeros((d, d), dtype=float)
+    rows, cols = src.shape
+    # 径向步长
+    delta_r = sample_num / ((d - 1) / 2.0)####半径因子
+    # 切向（旋转角度）步长
+    delta_t = 2.0 * np.pi / line_num####角度因子
+    ox = (d - 1) / 2.0
+    oy = (d - 1) / 2.0
+    for i in range(0, d, 1):
+        for j in range(0, d, 1):
+            rx = j - ox
+            ry = oy - i
+            r = np.sqrt(np.power(rx, 2) + np.power(ry, 2))
+            if (r > 0) & (r <= (d - 1) / 2.0):
+                t = np.arctan2(ry, rx)
+                if t < 0:
+                    t = t + 2.0 * np.pi
+                ri = r * delta_r
+                rf = np.int_(np.floor(ri))
+                rc = np.int_(np.ceil(ri))
+                if rf < 0:
+                    rf = 0
+                if rc > rows - 1:
+                    rc = rows - 1
+                ti = t / delta_t
+                tf = np.int_(np.floor(ti))
+                tc = np.int_(np.ceil(ti))
+                if tf < 0:
+                    tf = 0
+                if tc > cols - 1:
+                    tc = cols - 1
+                # 选择相应的插值算法
+                # dst[i][j] = interpolate_adjacent(src, ri, rf, rc, ti, tf, tc)
+                dst[i][j] = interpolate_bilinear(src, ri, rf, rc, ti, tf, tc)
+                # dst[i][j] = interpolate_bitriple(src, ri, rf, rc, ti, tf, tc, rows, cols)
+    return dst
+#RGB三通道色彩转换
+def R_channel(data):
+    for i in range(len(data)):
+        for j in range(len(data[0])):
+            if -20<data[i][j]<-15:
+                data[i][j] = 204
+            if -15<data[i][j]<-10:
+                data[i][j] = 150
+            if -10< data[i][j] <-5:
+                data[i][j] = 255
+            if -5<data[i][j]<0:
+                data[i][j] = 150
+            if 0<data[i][j]<5:
+                data[i][j] = 201
+            if 5< data[i][j] <10:
+                data[i][j] = 254
+            if 10<data[i][j]<15:
+                data[i][j] = 255
+            if 15<data[i][j]<20:
+                data[i][j] = 255
+            if 20< data[i][j] <25:
+                data[i][j] = 254
+            if 25<data[i][j]<30:
+                data[i][j] = 0
+            if 30<data[i][j]<35:
+                data[i][j] = 0
+            if 35< data[i][j] <40:
+                data[i][j] = 0
+            if 40<data[i][j]<45:
+                data[i][j] = 0
+            if 45<data[i][j]<50:
+                data[i][j] = 0
+            if 50< data[i][j] <55:
+                data[i][j] = 1
+            if 55< data[i][j] <60:
+                data[i][j] = 112
+            if 60<data[i][j]<65:
+                data[i][j] = 140
+            if 65<data[i][j]<70:
+                data[i][j] = 170
+            if 70< data[i][j] <75:
+                data[i][j] = 118
+            if 75< data[i][j] <80:
+                data[i][j] = 156
+            if data[i][j]>80:
+                data[i][j] = 255
+    return data
+
+def G_channel(data):
+    for i in range(len(data)):
+        for j in range(len(data[0])):
+            if -20<data[i][j]<-15:
+                data[i][j] = 0
+            if -15<data[i][j]<-10:
+                data[i][j] = 0
+            if -10< data[i][j] <-5:
+                data[i][j] = 0
+            if -5<data[i][j]<0:
+                data[i][j] = 0
+            if 0<data[i][j]<5:
+                data[i][j] = 0
+            if 5< data[i][j] <10:
+                data[i][j] = 0
+            if 10<data[i][j]<15:
+                data[i][j] = 121
+            if 15<data[i][j]<20:
+                data[i][j] = 200
+            if 20< data[i][j] <25:
+                data[i][j] = 255
+            if 25<data[i][j]<30:
+                data[i][j] = 151
+            if 30<data[i][j]<35:
+                data[i][j] = 200
+            if 35< data[i][j] <40:
+                data[i][j] = 255
+            if 40<data[i][j]<45:
+                data[i][j] = 0
+            if 45<data[i][j]<50:
+                data[i][j] = 150
+            if 50< data[i][j] <55:
+                data[i][j] = 255
+            if 55< data[i][j] <60:
+                data[i][j] = 112
+            if 60<data[i][j]<65:
+                data[i][j] = 140
+            if 65<data[i][j]<70:
+                data[i][j] = 170
+            if 70< data[i][j] <75:
+                data[i][j] = 118
+            if 75< data[i][j] <80:
+                data[i][j] = 156
+            if data[i][j]>80:
+                data[i][j] = 255
+    return data
+
+def B_channel(data):
+    for i in range(len(data)):
+        for j in range(len(data[0])):
+            if -20<data[i][j]<-15:
+                data[i][j] = 204
+            if -15<data[i][j]<-10:
+                data[i][j] = 252
+            if -10< data[i][j] <-5:
+                data[i][j] = 254
+            if -5<data[i][j]<0:
+                data[i][j] = 1
+            if 0<data[i][j]<5:
+                data[i][j] = 1
+            if 5< data[i][j] <10:
+                data[i][j] = 0
+            if 10<data[i][j]<15:
+                data[i][j] = 0
+            if 15<data[i][j]<20:
+                data[i][j] = 2
+            if 20< data[i][j] <25:
+                data[i][j] = 0
+            if 25<data[i][j]<30:
+                data[i][j] = 0
+            if 30<data[i][j]<35:
+                data[i][j] = 0
+            if 35< data[i][j] <40:
+                data[i][j] = 1
+            if 40<data[i][j]<45:
+                data[i][j] = 254
+            if 45<data[i][j]<50:
+                data[i][j] = 254
+            if 50< data[i][j] <55:
+                data[i][j] = 255
+            if 55< data[i][j] <60:
+                data[i][j] = 200
+            if 60<data[i][j]<65:
+                data[i][j] = 238
+            if 65<data[i][j]<70:
+                data[i][j] = 255
+            if 70< data[i][j] <75:
+                data[i][j] = 118
+            if 75< data[i][j] <80:
+                data[i][j] = 156
+            if data[i][j]>80:
+                data[i][j] = 255
+    return data
+#输出并保存
+def out_img(data1,data2,data3):                 #输出图片
+    new_image = Image.fromarray(data1)     #调用Image库，数组归一化
+    misc.imsave("ppi1.png",new_image)
+    new_image = Image.fromarray(data2)     #调用Image库，数组归一化
+    misc.imsave("ppi2.png",new_image)
+    new_image = Image.fromarray(data3)     #调用Image库，数组归一化
+    misc.imsave("ppi3.png",new_image)
+
+if __name__=="__main__":
+    data1 = data.copy()
+    data2 = data.copy()
+    data3 = data.copy()  #三个通道数组
+
+    #将数组转换色标并保存
+    r = R_channel(data1)
+    g = G_channel(data2)
+    b = B_channel(data3)
+    out_img(data1, data2, data3)
+
+    #合并为三通道图片
+    r = Image.open('ppi1.png')
+    g = Image.open('ppi2.png')
+    b = Image.open('ppi3.png')
+    pic = Image.merge('RGB', (r, g, b))
+    pic.show()
+    misc.imsave("RGB直角坐标系.png",pic)
+
+    #将r通道图片进行极坐标转换
+    src = cv2.imread("ppi1.png", cv2.IMREAD_GRAYSCALE)
+    # 传入的图像宽 高
+    sample_num, line_num = src.shape[:2]
+    new_image = polar_transform(src,500)
+    new_image= cv2.flip(new_image, 1)
+    cv2.imshow('img', new_image)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+    cv2.imwrite('polar1.png',new_image,[int(cv2.IMWRITE_PNG_COMPRESSION),9])
+    #将g通道图片进行极坐标转换
+    src = cv2.imread("ppi2.png", cv2.IMREAD_GRAYSCALE)
+    # 传入的图像宽高
+    sample_num, line_num = src.shape[:2]
+    new_image = polar_transform(src,500)
+    new_image= cv2.flip(new_image, 1)
+    cv2.imshow('img', new_image)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+    cv2.imwrite('polar2.png',new_image,[int(cv2.IMWRITE_PNG_COMPRESSION),9])
+    #将b通道图片进行极坐标转换
+    src = cv2.imread("ppi3.png", cv2.IMREAD_GRAYSCALE)
+    # 传入的图像宽高
+    sample_num, line_num = src.shape[:2]
+    new_image = polar_transform(src,500)
+    new_image= cv2.flip(new_image, 1)
+    cv2.imshow('img', new_image)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+    cv2.imwrite('polar3.png',new_image,[int(cv2.IMWRITE_PNG_COMPRESSION),9])
+
+    #合并为三通道图片
+    r = Image.open('polar1.PNG')
+    g = Image.open('polar2.PNG')
+    b = Image.open('polar3.PNG')
+    pic = Image.merge('RGB', (r, g, b))
+    pic.show()
+    misc.imsave("RGB极坐标.png",pic)
+
